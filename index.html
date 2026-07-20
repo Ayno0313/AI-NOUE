@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>AI,NOUE — プロトタイプ v0.1</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --panel: #ffffff;
+    --ink: #2b2a28;
+    --accent: #c1502e;
+    --accent-soft: #f0d9cf;
+    --line: #ddd6c8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+  }
+  .app {
+    width: 100%;
+    max-width: 880px;
+  }
+  header {
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  header p {
+    margin: 0;
+    font-size: 13px;
+    color: #7a746a;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .avatar-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .avatar-name {
+    font-size: 13px;
+    color: #7a746a;
+    text-align: center;
+  }
+  .mute-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #7a746a;
+  }
+  .chat-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 520px;
+  }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg {
+    max-width: 78%;
+    padding: 9px 13px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .msg.ai {
+    background: #efece3;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
+  .msg.user {
+    background: var(--accent);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.escalate {
+    background: #fff4e5;
+    border: 1px dashed #d99a3d;
+    align-self: flex-start;
+    font-size: 13px;
+    color: #7a5a1e;
+  }
+  .quick-replies {
+    padding: 0 16px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .quick-replies button {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: #fff;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .quick-replies button:hover { border-color: var(--accent); color: var(--accent); }
+  form {
+    display: flex;
+    border-top: 1px solid var(--line);
+    padding: 10px;
+    gap: 8px;
+  }
+  input[type=text] {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  button.send {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0 18px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .note {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #9a9488;
+    line-height: 1.6;
+  }
+  .typing {
+    font-size: 12px;
+    color: #9a9488;
+    padding-left: 16px;
+    height: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>AI,NOUE <span class="badge">Prototype v0.1 — 非公開検証用</span></h1>
+    <p>Digital Factory 常駐AI(仮)。井上さんの過去の指導・相談対応を土台に、初回来訪者と基礎的な質問に応答する。声・見た目はダミー実装(段階1)。</p>
+  </header>
+
+  <div class="layout">
+    <div class="avatar-panel">
+      <svg id="avatarSvg" width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="66" fill="#efece3" stroke="#ddd6c8" stroke-width="2"/>
+        <circle cx="48" cy="62" r="6" fill="#2b2a28"/>
+        <circle cx="92" cy="62" r="6" fill="#2b2a28"/>
+        <path id="mouth" d="M 50 92 Q 70 92 90 92" stroke="#2b2a28" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="avatar-name">仮アバター(ジェネリック)<br>本人の姿・声は未使用</div>
+      <div class="mute-row">
+        <input type="checkbox" id="voiceToggle" checked>
+        <label for="voiceToggle">音声読み上げ(ブラウザ標準音声)</label>
+      </div>
+    </div>
+
+    <div class="chat-panel">
+      <div class="messages" id="messages"></div>
+      <div class="typing" id="typing"></div>
+      <div class="quick-replies" id="quickReplies"></div>
+      <form id="chatForm">
+        <input type="text" id="userInput" placeholder="質問を入力(例: レーザーカッターの予約方法は?)" autocomplete="off">
+        <button class="send" type="submit">送信</button>
+      </form>
+    </div>
+  </div>
+
+  <p class="note">
+    ※このデモは会話ロジックの検証用。回答内容はDlabの過去アーカイブを想定したサンプル(ダミー)です。実運用では実際の指導録画・文字起こしをもとに回答を作成し、井上さんご本人の確認を経て公開します。<br>
+    音声はブラウザ標準の音声合成(汎用ボイス)を使用しており、井上さんの声のクローンではありません。ボイスクローン(例: ElevenLabs)やBlenderアバターの導入は、本人の書面同意と使用範囲の合意が取れた後の第2段階として別途検討します。
+  </p>
+</div>
+
+<script>
+const KB = [
+  {
+    keys: ["初めて", "はじめて", "初回", "登録"],
+    q: "初めてファクトリーに来ました。何をすればいいですか?",
+    a: "ようこそ!まずは受付で利用登録をお願いします。安全講習(約15分)を受けていただいた後、使いたい機材のオリエンテーションに進みます。今日はどの機材を使う予定ですか?",
+    quick: ["レーザーカッターを使いたい", "3Dプリンタを使いたい", "安全講習について知りたい"]
+  },
+  {
+    keys: ["レーザーカッター", "レーザー"],
+    q: "レーザーカッターの予約方法は?",
+    a: "レーザーカッターは共有カレンダーで事前予約制です。学生ポータルの「Digital Factory予約」から空き枠を選んでください。素材の厚みや種類によって出力設定が変わるので、初回は必ずスタッフ立ち会いでの利用になります。",
+    quick: ["使える素材の種類は?", "予約が埋まっている場合は?"]
+  },
+  {
+    keys: ["3Dプリンタ", "プリンタ"],
+    q: "3Dプリンタは何を使えますか?",
+    a: "FDM機が3台、光造形機が1台あります。データはSTL形式で持ち込んでください。造形時間が3時間を超える場合は前日までの予約が必要です。",
+    quick: ["データの入稿形式は?", "初めてファクトリーに来ました。何をすればいいですか?"]
+  },
+  {
+    keys: ["安全講習", "講習"],
+    q: "安全講習について知りたい",
+    a: "安全講習は全機材共通の基礎編(15分)と、機材ごとの個別編(各5〜10分)に分かれています。基礎編は毎日受付時間内であれば随時受講可能です。",
+    quick: ["初めてファクトリーに来ました。何をすればいいですか?"]
+  },
+  {
+    keys: ["素材", "厚み"],
+    q: "使える素材の種類は?",
+    a: "アクリル、MDF、ベニヤ、厚紙が基本です。塩ビや発泡スチロールなど有害ガスが出る素材は使用不可なので、事前に材料をスタッフに見せてください。",
+    quick: []
+  }
+];
+
+const ESCALATE_KEYWORDS = ["構造", "プロジェクト", "設計相談", "評価", "講評", "卒業設計", "コンセプト"];
+
+const messagesEl = document.getElementById('messages');
+const typingEl = document.getElementById('typing');
+const quickRepliesEl = document.getElementById('quickReplies');
+const form = document.getElementById('chatForm');
+const input = document.getElementById('userInput');
+const voiceToggle = document.getElementById('voiceToggle');
+const mouth = document.getElementById('mouth');
+
+function addMessage(text, cls) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function setQuickReplies(list) {
+  quickRepliesEl.innerHTML = '';
+  list.forEach(q => {
+    const btn = document.createElement('button');
+    btn.textContent = q;
+    btn.onclick = () => { input.value = q; form.requestSubmit(); };
+    quickRepliesEl.appendChild(btn);
+  });
+}
+
+function animateMouth(active) {
+  if (!active) { mouth.setAttribute('d', 'M 50 92 Q 70 92 90 92'); return; }
+  let open = false;
+  const iv = setInterval(() => {
+    open = !open;
+    mouth.setAttribute('d', open ? 'M 50 90 Q 70 108 90 90' : 'M 50 92 Q 70 96 90 92');
+  }, 140);
+  return iv;
+}
+
+function speak(text) {
+  if (!voiceToggle.checked || !('speechSynthesis' in window)) return;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ja-JP';
+  utter.rate = 1.02;
+  const iv = animateMouth(true);
+  utter.onend = () => { clearInterval(iv); animateMouth(false); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+function findAnswer(userText) {
+  const t = userText.toLowerCase();
+  if (ESCALATE_KEYWORDS.some(k => userText.includes(k))) {
+    return { escalate: true };
+  }
+  for (const item of KB) {
+    if (item.keys.some(k => userText.includes(k))) {
+      return item;
+    }
+  }
+  return null;
+}
+
+function respond(userText) {
+  const match = findAnswer(userText);
+  typingEl.textContent = '入力中…';
+  setTimeout(() => {
+    typingEl.textContent = '';
+    if (!match) {
+      const msg = 'すみません、まだこの質問には対応していません。基礎的な使い方の質問なら得意なので、機材名や「初めて」などのキーワードで聞いてみてください。難しい相談は井上さんに直接おつなぎしますか?';
+      addMessage(msg, 'ai');
+      speak(msg);
+      setQuickReplies(['初めてファクトリーに来ました。何をすればいいですか?', '井上さんに相談を回してほしい']);
+      return;
+    }
+    if (match.escalate) {
+      const msg = 'この内容はテクニカル/プロジェクトベースのご相談ですね。井上さんに直接お繋ぎするのが良さそうです。空いている時間帯を確認しますか?';
+      addMessage(msg, 'escalate');
+      speak('この内容は井上さんに直接おつなぎします。');
+      setQuickReplies(['空いている時間を確認したい', '簡単な質問に戻る']);
+      return;
+    }
+    addMessage(match.a, 'ai');
+    speak(match.a);
+    setQuickReplies(match.quick && match.quick.length ? match.quick : Array.from(new Set(KB.map(k => k.q))).slice(0,3));
+  }, 500);
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  addMessage(text, 'user');
+  input.value = '';
+  respond(text);
+});
+
+// 初期メッセージ
+window.addEventListener('load', () => {
+  const greet = 'こんにちは、Digital Factoryへようこそ。基礎的な使い方や初回利用についてはこのAIがお答えします。何か聞きたいことはありますか?';
+  addMessage(greet, 'ai');
+  setQuickReplies(KB.map(k => k.q));
+  speak(greet);
+});
+</script>
+</body>
+</html>
